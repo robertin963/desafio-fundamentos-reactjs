@@ -33,34 +33,40 @@ const Dashboard: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [balance, setBalance] = useState<Balance>({} as Balance);
 
+  async function loadTransactions(): Promise<void> {
+    const { data } = await api.get('transactions');
+
+    const transactionsFormatted = data.transactions.map(
+      (transaction: Transaction) => ({
+        ...transaction,
+        formattedValue:
+          transaction.type === 'outcome'
+            ? ' - ' + formatValue(transaction.value)
+            : formatValue(transaction.value),
+        formattedDate: new Date(transaction.created_at).toLocaleDateString(
+          'pt-br',
+        ),
+      }),
+    );
+    setTransactions(transactionsFormatted);
+
+    const balanceFormatted = {
+      income: formatValue(data.balance.income),
+      outcome: formatValue(data.balance.outcome),
+      total: formatValue(data.balance.total),
+    };
+
+    setBalance(balanceFormatted);
+  }
+
   useEffect(() => {
-    async function loadTransactions(): Promise<void> {
-      const { data } = await api.get('transactions');
-
-      const transactionsFormatted = data.transactions.map(
-        (transaction: Transaction) => ({
-          ...transaction,
-          formattedValue:
-            transaction.type === 'outcome'
-              ? ' - ' + formatValue(transaction.value)
-              : formatValue(transaction.value),
-          formattedDate: new Date(transaction.created_at).toLocaleDateString(
-            'pt-br',
-          ),
-        }),
-      );
-      setTransactions(transactionsFormatted);
-
-      const balanceFormatted = {
-        income: formatValue(data.balance.income),
-        outcome: formatValue(data.balance.outcome),
-        total: formatValue(data.balance.total),
-      };
-
-      setBalance(balanceFormatted);
-    }
-
     loadTransactions();
+
+    const interval = setInterval(() => {
+      loadTransactions();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
